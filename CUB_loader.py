@@ -36,14 +36,14 @@ class CUB200_loader(data.Dataset):
                 transforms.Resize(448),
                 transforms.RandomCrop([448, 448]),
                 transforms.RandomHorizontalFlip(),#flip?
-                transforms.ToTensor(),transforms.Normalize(mean=means,std=[std] * 3)#toTensor had normalization
+                transforms.ToTensor()#,transforms.Normalize(mean=means,std=[std] * 3)#toTensor had normalization
             ])
         elif transform is None and split.lower() == 'test':
             self.transform = transforms.Compose([
                 transforms.ToPILImage(),
                 transforms.Resize(448),
                 transforms.CenterCrop(448),
-                transforms.ToTensor(),transforms.Normalize(mean=means,std=[std] * 3)
+                transforms.ToTensor()#,transforms.Normalize(mean=means,std=[std] * 3)
             ])
         else:
             print(" [*] Warning: transform is not None, Recomend to use defualt")

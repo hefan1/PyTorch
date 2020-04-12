@@ -90,7 +90,8 @@ class BCNNManager(object):
         #self._net.load_state_dict(torch.load(self._path['model']))#not now
         print(self._net)
         # Criterion.
-        self._criterion = torch.nn.CrossEntropyLoss().cuda()
+        #self._criterion = torch.nn.CrossEntropyLoss().cuda()
+        self._criterion = torch.nn.CrossEntropyLoss()
         # Solver.
         self._solver = torch.optim.SGD(
             self._net.parameters(), lr=self._options['base_lr'],
@@ -129,7 +130,7 @@ class BCNNManager(object):
         trainset = CUB200_loader(os.getcwd() + '/data/CUB_200_2011')
         testset = CUB200_loader(os.getcwd() + '/data/CUB_200_2011')
         self._train_loader = data.DataLoader(trainset, batch_size=self._options['batch_size'],
-                                      shuffle=False, collate_fn=trainset.CUB_collate, num_workers=1)
+                                      shuffle=True, collate_fn=trainset.CUB_collate, num_workers=1)#shuffle?
         self._test_loader = data.DataLoader(testset, batch_size=self._options['batch_size'],
                                      shuffle=False, collate_fn=testset.CUB_collate, num_workers=1)
 
@@ -164,6 +165,9 @@ class BCNNManager(object):
 
                 if(num_total%1==0):
                     print("Train Acc: "+str((100 * num_correct / num_total).item())+"%")
+                    print(str(num_correct)+" "+str(num_total))
+                    print(str(prediction)+" "+str(y.data))
+                    print(str(loss.data))
 
                 # Backward pass.
                 loss.backward()
@@ -271,7 +275,7 @@ def main():
     #         assert os.path.isdir(path[d])
 
     manager = BCNNManager(options, path)
-    # manager.getStat()
+    #manager.getStat()
     manager.train()
 
 
