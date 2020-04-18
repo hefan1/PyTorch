@@ -41,24 +41,24 @@ class BCNN_STN(torch.nn.Module):
         # Linear classifier.
         self.fc = torch.nn.Linear(512**2, 200)
 
+
+        self.c_size=512
+
         # Spatial transformer localization-network
         self.localization = nn.Sequential(
-            nn.Conv2d(3, 8, kernel_size=7),# nn.Conv2d(1, 8, kernel_size=7),#448->442
-            nn.MaxPool2d(4, stride=4),#442->110
+            nn.Conv2d(1*self.c_size, 8*self.c_size, kernel_size=7),  # 22
+            nn.MaxPool2d(2, stride=2),  # 11
             nn.ReLU(True),
-            nn.Conv2d(8, 10, kernel_size=5),#110->106
-            nn.MaxPool2d(2, stride=2),#106->53
-            nn.ReLU(True),
-            nn.Conv2d(10,12,kernel_size=3),#53->51
-            nn.MaxPool2d(2,stride=2),#51->25
+            nn.Conv2d(8*self.c_size, 10*self.c_size, kernel_size=5),  # 7
+            nn.MaxPool2d(2, stride=2),  # 7/2=3
             nn.ReLU(True)
         )
 
         # Regressor for the 3 * 2 affine matrix
         self.fc_loc = nn.Sequential(
-            nn.Linear(12 * 25 * 25, 64),#nn.Linear(10 * 3 * 3, 32),
+            nn.Linear(10*self.c_size * 3 * 3, 16*self.c_size),
             nn.ReLU(True),
-            nn.Linear(64, 3 * 2)
+            nn.Linear(16*self.c_size, 3 * 2)
         )
 
         # Initialize the weights/bias with identity transformation
@@ -67,8 +67,7 @@ class BCNN_STN(torch.nn.Module):
 
     def stn(self, x):
         xs = self.localization(x)
-
-        xs = xs.view(-1, 12 * 25 * 25)# xs = xs.view(-1, 10 * 3 * 3)
+        xs = xs.view(-1, 10 * 3 * 3)
         theta = self.fc_loc(xs)
         theta = theta.view(-1, 2, 3)
 
@@ -84,15 +83,23 @@ class BCNN_STN(torch.nn.Module):
         Returns:
             Score, torch.autograd.Variable of shape N*200.
         """
-        #Transform
-        X=self.stn(X)
+        #Transform failed
+        # X=self.stn(X)
 
 
         N = X.size()[0]
         assert X.size() == (N, 3, 448, 448)
         X = self.features(X)
         assert X.size() == (N, 512, 28, 28)
+        # print(X.shape)
+        # for i in range(N):
+        #     for j in range(512):
+        #         X[i][j]=self.stn(torch.reshape(X[i][j],(1,-1,28,28)))
+
+        X=self.stn(X)
+
         X = X.view(N, 512, 28**2)
+        # print(X.shape)
         X = torch.bmm(X, torch.transpose(X, 1, 2)) / (28**2)  # Bilinear
         assert X.size() == (N, 512, 512)
         X = X.view(N, 512**2)
