@@ -172,7 +172,7 @@ class BCNNManager(object):
                 # Backward pass.
                 loss.backward()
                 self._solver.step()
-            train_acc = 100 * num_correct / num_total
+            train_acc = (100 * num_correct / num_total).item()
             test_acc = self._accuracy(self._test_loader)
             self._scheduler.step(test_acc)
             if test_acc > best_acc:
@@ -204,6 +204,7 @@ class BCNNManager(object):
             num_total += y.size(0)
             num_correct += torch.sum(prediction == y.data).item()
         self._net.train(True)  # Set the model to training phase
+        return 100 * num_correct / num_total
 
 
     def getStat(self):
@@ -216,6 +217,8 @@ class BCNNManager(object):
         #     train_data, batch_size=1, shuffle=False, num_workers=4,
         #     pin_memory=True)
         trainset = CUB200_loader(os.getcwd() + '/data/CUB_200_2011')
+        print(len(trainset))
+        return
         train_loader = data.DataLoader(trainset, batch_size=4,
                                       shuffle=False, collate_fn=trainset.CUB_collate, num_workers=1)
         mean = torch.zeros(3)
@@ -275,7 +278,7 @@ def main():
     #         assert os.path.isdir(path[d])
 
     manager = BCNNManager(options, path)
-    #manager.getStat()
+    manager.getStat()
     manager.train()
 
 
