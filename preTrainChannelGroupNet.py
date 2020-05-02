@@ -1,24 +1,24 @@
-# -*- coding: utf-8 -*-
-"""Fine-tune all layers for bilinear CNN.
-Usage:
-    CUDA_VISIBLE_DEVICES=0,1,2,3 ./src/bilinear_cnn_all.py --base_lr 0.05 \
-        --batch_size 64 --epochs 100 --weight_decay 5e-4
-"""
-
-
 import os
 
 import torch
 import torchvision
 import torch.utils.data as data
+import torch.nn as nn
+import torch.nn.functional as F
+import torch.optim as optim
+import torchvision
+from torchvision import datasets, transforms
+import matplotlib.pyplot as plt
+import numpy as np
+
 
 from CUB_loader import CUB200_loader
+
 
 torch.manual_seed(1)
 torch.cuda.manual_seed_all(1)
 
-
-class BCNN(torch.nn.Module):
+class CGNN(torch.nn.Module):
     """B-CNN for CUB200.
     The B-CNN model is illustrated as follows.
     conv1^2 (64) -> pool1 -> conv2^2 (128) -> pool2 -> conv3^3 (256) -> pool3
@@ -34,14 +34,24 @@ class BCNN(torch.nn.Module):
         """Declare all needed layers."""
         torch.nn.Module.__init__(self)
         # Convolution and pooling layers of VGG-16.
-        self.features = torchvision.models.vgg16(pretrained=True).features#fine tune?
+        self.features = torchvision.models.vgg16(pretrained=True).features #fine tune?
         self.features = torch.nn.Sequential(*list(self.features.children())
                                             [:-1])  # Remove pool5.
-        # Linear classifier.
-        self.fc = torch.nn.Linear(512**2, 200)
-        torch.nn.init.kaiming_normal(self.fc.weight.data)  # 何凯明初始化
-        if self.fc.bias is not None:
-            torch.nn.init.constant(self.fc.bias.data, val=0)  # fc层的bias进行constant初始化
+        # No grad for conv
+        for param in self.features.parameters():
+            param.requires_grad = False
+
+
+        # Linear classifier
+        self.fc1_ = torch.nn.Linear(512, 512)
+        self.fc2_ = torch.nn.Linear(512, 512)
+        self.fc3_ = torch.nn.Linear(512, 512)
+
+        self.fc1 = torch.nn.Linear(512, 512)
+        self.fc2 = torch.nn.Linear(512, 512)
+        self.fc3 = torch.nn.Linear(512, 512)
+
+
 
     def forward(self, X):
         """Forward pass of the network.
@@ -54,18 +64,25 @@ class BCNN(torch.nn.Module):
         assert X.size() == (N, 3, 448, 448)
         X = self.features(X)
         assert X.size() == (N, 512, 28, 28)
-        X = X.view(N, 512, 28**2)
-        X = torch.bmm(X, torch.transpose(X, 1, 2)) / (28**2)  # Bilinear
-        assert X.size() == (N, 512, 512)
-        X = X.view(N, 512**2)
-        X = torch.sqrt(X + 1e-5)
-        X = torch.nn.functional.normalize(X)
-        X = self.fc(X)
-        assert X.size() == (N, 200)
-        return X
+        Xp=nn.MaxPool2d(kernel_size=28,stride=28)
+        assert Xp.size()==(N,512,1,1)
+        Xp=Xp.view(-1,512*1*1)
+        X1=F.relu(self.fc1_(Xp))
+        X2=F.relu(self.fc2_(Xp))
+        X3=F.relu(self.fc3_(Xp))
+
+        X1 = self.fc1_(X1)
+        X2 = self.fc2_(X2)
+        X3 = self.fc3_(X3)
+
+        ret=torch.cat((X1,X2,X3),dim=1)
+
+        return ret
 
 
-class BCNNManager(object):
+
+
+class CGNNManager(object):
     """Manager class to train bilinear CNN.
     Attributes:
         _options: Hyperparameters.
@@ -88,7 +105,7 @@ class BCNNManager(object):
         # Network.
         #self._net = torch.nn.DataParallel(BCNN()).cuda()
         #no cuda
-        self._net=BCNN()
+        self._net=CGNN()
         # Load the model from disk.
         #self._net.load_state_dict(torch.load(self._path['model']))#not now
         print(self._net)
@@ -98,7 +115,7 @@ class BCNNManager(object):
         # Solver.
         self._solver = torch.optim.SGD(
             self._net.parameters(), lr=self._options['base_lr'],
-            momentum=0.9, weight_decay=self._options['weight_decay'])
+            momentum=0.9)
         self._scheduler = torch.optim.lr_scheduler.ReduceLROnPlateau(
             self._solver, mode='max', factor=0.1, patience=3, verbose=True,
             threshold=1e-4)
@@ -118,18 +135,7 @@ class BCNNManager(object):
             torchvision.transforms.Normalize(mean=(0.485, 0.456, 0.406),
                                              std=(0.229, 0.224, 0.225))
         ])
-        # train_data = cub200.CUB200(
-        #     root=self._path['cub200'], train=True, download=True,
-        #     transform=train_transforms)
-        # test_data = cub200.CUB200(
-        #     root=self._path['cub200'], train=False, download=True,
-        #     transform=test_transforms)
-        # self._train_loader = torch.utils.data.DataLoader(
-        #     train_data, batch_size=self._options['batch_size'],
-        #     shuffle=True, num_workers=4, pin_memory=True)
-        # self._test_loader = torch.utils.data.DataLoader(
-        #     test_data, batch_size=16,
-        #     shuffle=False, num_workers=4, pin_memory=True)
+
         trainset = CUB200_loader(os.getcwd() + '/data/CUB_200_2011')
         testset = CUB200_loader(os.getcwd() + '/data/CUB_200_2011')
         self._train_loader = data.DataLoader(trainset, batch_size=self._options['batch_size'],
@@ -279,9 +285,8 @@ def main():
     #         assert os.path.isdir(path[d])
 
     manager = BCNNManager(options, path)
-    manager.getStat()
+    # manager.getStat()
     manager.train()
-
 
 if __name__ == '__main__':
     main()
