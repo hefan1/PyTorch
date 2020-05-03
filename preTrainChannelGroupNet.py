@@ -17,6 +17,9 @@ from CUB_loader import CUB200_loader
 
 torch.manual_seed(1)
 torch.cuda.manual_seed_all(1)
+df=pd.read_csv("GCLables.csv")
+at=df.iloc[:,1:]
+y_gc=torch.tensor([at.iloc[0],at.iloc[1],at.iloc[2]]).view(1,512*3)
 
 class CGNN(torch.nn.Module):
     """B-CNN for CUB200.
@@ -64,7 +67,7 @@ class CGNN(torch.nn.Module):
         assert X.size() == (N, 3, 448, 448)
         X = self.features(X)
         assert X.size() == (N, 512, 28, 28)
-        Xp=nn.MaxPool2d(kernel_size=28,stride=28)
+        Xp=nn.MaxPool2d(kernel_size=28,stride=28)(X)
         assert Xp.size()==(N,512,1,1)
         Xp=Xp.view(-1,512*1*1)
         X1=F.relu(self.fc1_(Xp))
@@ -113,7 +116,8 @@ class CGNNManager(object):
         print(self._net)
         # Criterion.
         #self._criterion = torch.nn.CrossEntropyLoss().cuda()
-        self._criterion = torch.nn.CrossEntropyLoss()
+        # self._criterion = torch.nn.CrossEntropyLoss()
+        self._criterion=torch.nn.MSELoss()
         # Solver.
         self._solver = torch.optim.SGD(
             self._net.parameters(), lr=self._options['base_lr'],
@@ -149,7 +153,7 @@ class CGNNManager(object):
     def train(self):
         """Train the network."""
         print('Training.')
-        y_gc=
+
         best_acc = 0.0
         best_epoch = None
         print('Epoch\tTrain loss\tTrain acc\tTest acc')
@@ -167,13 +171,15 @@ class CGNNManager(object):
                 self._solver.zero_grad()
                 # Forward pass.
                 score = self._net(X)
-                loss = self._criterion(score, y)
+                loss=self._criterion(score.double(),y_gc.double())
+                # loss = self._criterion(score, y)
                 # epoch_loss.append(loss.data[0])
                 epoch_loss.append(loss.data.item())
                 # Prediction.
                 _, prediction = torch.max(score.data, 1)
                 num_total += y.size(0)
-                num_correct += torch.sum(prediction == y.data)
+                num_correct += torch.sum(prediction == y_gc.data)
+                # num_correct += torch.sum(prediction == y.data)
 
                 if(num_total%1==0):
                     print("Train Acc: "+str((100 * num_correct / num_total).item())+"%")
@@ -213,8 +219,10 @@ class CGNNManager(object):
             # Prediction.
             score = self._net(X)
             _, prediction = torch.max(score.data, 1)
-            num_total += y.size(0)
-            num_correct += torch.sum(prediction == y.data).item()
+            num_total += y_gc.size(0)
+            num_correct += torch.sum(prediction == y_gc.data).item()
+            # num_total += y.size(0)
+            # num_correct += torch.sum(prediction == y.data).item()
         self._net.train(True)  # Set the model to training phase
         return 100 * num_correct / num_total
 
