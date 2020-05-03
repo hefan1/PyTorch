@@ -10,7 +10,7 @@ import torchvision
 from torchvision import datasets, transforms
 import matplotlib.pyplot as plt
 import numpy as np
-
+import pandas as pd
 
 from CUB_loader import CUB200_loader
 
@@ -75,6 +75,8 @@ class CGNN(torch.nn.Module):
         X2 = self.fc2_(X2)
         X3 = self.fc3_(X3)
 
+        # ret=torch.stack((X1,X2,X3))#shape=[3,
+
         ret=torch.cat((X1,X2,X3),dim=1)
 
         return ret
@@ -137,7 +139,7 @@ class CGNNManager(object):
         ])
 
         trainset = CUB200_loader(os.getcwd() + '/data/CUB_200_2011')
-        testset = CUB200_loader(os.getcwd() + '/data/CUB_200_2011')
+        testset = CUB200_loader(os.getcwd() + '/data/CUB_200_2011',split='test')
         self._train_loader = data.DataLoader(trainset, batch_size=self._options['batch_size'],
                                       shuffle=True, collate_fn=trainset.CUB_collate, num_workers=1)#shuffle?
         self._test_loader = data.DataLoader(testset, batch_size=self._options['batch_size'],
@@ -147,6 +149,7 @@ class CGNNManager(object):
     def train(self):
         """Train the network."""
         print('Training.')
+        y_gc=
         best_acc = 0.0
         best_epoch = None
         print('Epoch\tTrain loss\tTrain acc\tTest acc')
@@ -239,6 +242,9 @@ class CGNNManager(object):
         print(mean)
         print(std)
 
+    def saveModel(self):
+        torch.save(self._net.state_dict(),"preTrainedGCNetModel.pth")
+
 
 def main():
     """The main function."""
@@ -284,9 +290,10 @@ def main():
     #     else:
     #         assert os.path.isdir(path[d])
 
-    manager = BCNNManager(options, path)
+    manager = CGNNManager(options, path)
     # manager.getStat()
     manager.train()
+    manager.saveModel()
 
 if __name__ == '__main__':
     main()
