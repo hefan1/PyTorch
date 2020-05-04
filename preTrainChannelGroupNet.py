@@ -175,17 +175,18 @@ class CGNNManager(object):
                 # loss = self._criterion(score, y)
                 # epoch_loss.append(loss.data[0])
                 epoch_loss.append(loss.data.item())
-                # Prediction.
-                _, prediction = torch.max(score.data, 1)
+                # # Prediction.
+                # _, prediction = torch.max(score.data, 1)
                 num_total += y.size(0)
-                num_correct += torch.sum(prediction == y_gc.data)
+
+                # num_correct += torch.sum(prediction == y_gc.data)
                 # num_correct += torch.sum(prediction == y.data)
 
                 if(num_total%1==0):
                     print("Train Acc: "+str((100 * num_correct / num_total).item())+"%")
                     print(str(num_correct)+" "+str(num_total))
-                    print(str(prediction)+" "+str(y.data))
-                    print(str(loss.data))
+                    # print(str(prediction)+" "+str(y.data))
+                    print(str(loss.data.item()/self.self._options['batch_size']))
 
                 # Backward pass.
                 loss.backward()

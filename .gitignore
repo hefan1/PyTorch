@@ -1,3 +1,4 @@
 /data/
 /cifar_net.pth
 /MNIST/
+/preTrainedGCNetModel.pth
