@@ -10,6 +10,7 @@ import numpy as np
 plt.ion()   # interactive mode
 
 device = torch.device("cuda" if torch.cuda.is_available() else "cpu")
+print(device)
 
 # Training dataset
 train_loader = torch.utils.data.DataLoader(
@@ -91,8 +92,9 @@ def train(epoch):
     for batch_idx, (data, target) in enumerate(train_loader):
         data, target = data.to(device), target.to(device)
 
-        optimizer.zero_grad()
+        # optimizer.zero_grad()
         output = model(data)
+        optimizer.zero_grad()
         loss = F.nll_loss(output, target)
         loss.backward()
         optimizer.step()
