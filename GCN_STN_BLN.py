@@ -249,6 +249,7 @@ class GTBNN(torch.nn.Module):
 
         return res
 
+
 def main():
     # tmpNet=torch.nn.DataParallel(CGNN()).cuda()
     # tmpNet.load_state_dict(torch.load("preTrainedGCNetModel.pth"))
@@ -259,27 +260,120 @@ def main():
     net = torch.nn.DataParallel(GTBNN()).cuda()
     print(net)
     trainset = CUB200_loader(os.getcwd() + '/data/CUB_200_2011')
+    testset = CUB200_loader(os.getcwd() + '/data/CUB_200_2011', split='test')
     train_loader = data.DataLoader(trainset, batch_size=2,
-                                   shuffle=True, collate_fn=trainset.CUB_collate, num_workers=1)  # shuffle?
+                                   shuffle=True, collate_fn=trainset.CUB_collate, num_workers=4)  # shuffle?
+    test_loader = data.DataLoader(testset, batch_size=2,
+                                  shuffle=False, collate_fn=testset.CUB_collate, num_workers=4)
     criterion = torch.nn.CrossEntropyLoss()
-    solver = torch.optim.SGD(
-        net.parameters(), lr=1,
-        momentum=0.9, weight_decay=1e-5)
-    for X, y in train_loader:
-        X = torch.autograd.Variable(X.cuda())
-        y = torch.autograd.Variable(y.cuda())
-        solver.zero_grad()
-        # Forward pass.
-        X.requires_grad=True
-        score = net(X)
-        loss = criterion(score, y)
-        # epoch_loss.append(loss.data[0])
-        # Prediction.
-        _, prediction = torch.max(score.data, 1)
-        print(torch.sum(prediction == y.data),flush=True)
-        loss.backward()
-        solver.step()
-        print(loss)
+    # solver = torch.optim.SGD(
+    #     net.parameters(), lr=0.1, weight_decay=1e-5)
+    solver = torch.optim.Adam(net.parameters(),lr=0.01,weight_decay=1e-4)
+    lrscheduler=torch.optim.lr_scheduler.CosineAnnealingLR(solver,T_max=32)
+
+    def _accuracy(net, data_loader):
+        """Compute the train/test accuracy.
+        Args:
+            data_loader: Train/Test DataLoader.
+        Returns:
+            Train/Test accuracy in percentage.
+        """
+        net.train(False)
+
+        num_correct = 0
+        num_total = 0
+        for X, y in data_loader:
+            # Data.
+            X = torch.autograd.Variable(X.cuda())
+            y = torch.autograd.Variable(y.cuda())
+            X.requires_grad = True
+            # Prediction.
+            score = net(X)
+            _, prediction = torch.max(score.data, 1)
+            num_total += y.size(0)
+            num_correct += torch.sum(prediction == y.data).item()
+        net.train(True)  # Set the model to training phase
+        return 100 * num_correct / num_total
+
+    best_acc = 0.0
+    best_epoch = None
+    for t in range(100):
+        epoch_loss = []
+        num_correct = 0
+        num_total = 0
+        cnt = 0
+        print('Epoch ' + str(t), flush=True)
+        for X, y in train_loader:
+            X = torch.autograd.Variable(X.cuda())
+            y = torch.autograd.Variable(y.cuda())
+            solver.zero_grad()
+            # Forward pass.
+            X.requires_grad = True
+            score = net(X)
+            loss = criterion(score, y)
+            # epoch_loss.append(loss.data[0])
+            epoch_loss.append(loss.data.item())
+            # Prediction.
+            _, prediction = torch.max(score.data, 1)
+            num_total += y.size(0)
+            num_correct += torch.sum(prediction == y.data)
+
+            loss.backward()
+            solver.step()
+            lrscheduler.step()
+
+            if (num_total >= cnt * 500):
+                cnt += 1
+                print("Train Acc: " + str((100 * num_correct / num_total).item()) + "%" + "\n" + str(
+                    num_correct) + " " + str(num_total) + "\n" + str(prediction) + " " + str(y.data) + "\n" + str(
+                    loss.data), flush=True)
+                # break
+
+        train_acc = (100 * num_correct / num_total).item()
+        test_acc = _accuracy(net, test_loader)
+        if test_acc > best_acc:
+            best_acc = test_acc
+            best_epoch = t + 1
+            print('*', end='')
+        print('%d\t%4.3f\t\t%4.2f%%\t\t%4.2f%%' %
+              (t + 1, sum(epoch_loss) / len(epoch_loss), train_acc, test_acc), flush=True)
+
+# def main():
+#     # tmpNet=torch.nn.DataParallel(CGNN()).cuda()
+#     # tmpNet.load_state_dict(torch.load("preTrainedGCNetModel.pth"))
+#     # tmpNet.eval()
+#     # state_dict=tmpNet.state_dict()
+#     # print(state_dict)
+#     #####test code
+#     # net = torch.nn.DataParallel(GTBNN()).cuda()
+#     net=GTBNN()
+#     print(net)
+#     dummy_input = torch.rand(1, 3, 448, 448)
+#     dummy_input.requires_grad=True
+#     torch.onnx.export(net,dummy_input,"GSBModel.onnx",verbose=True)
+#     return
+#     trainset = CUB200_loader(os.getcwd() + '/data/CUB_200_2011')
+#     train_loader = data.DataLoader(trainset, batch_size=4,
+#                                    shuffle=True, collate_fn=trainset.CUB_collate, num_workers=1)  # shuffle?
+#     criterion = torch.nn.CrossEntropyLoss()
+#     solver = torch.optim.SGD(
+#         net.parameters(), lr=1,
+#         momentum=0.9, weight_decay=1e-5)
+#     for X, y in train_loader:
+#         X = torch.autograd.Variable(X.cuda())
+#         y = torch.autograd.Variable(y.cuda())
+#         solver.zero_grad()
+#         # Forward pass.
+#         X.requires_grad=True
+#         score = net(X)
+#         loss = criterion(score, y)
+#         # epoch_loss.append(loss.data[0])
+#         # Prediction.
+#         _, prediction = torch.max(score.data, 1)
+#         print(torch.sum(prediction == y.data),flush=True)
+#         loss.backward()
+#         solver.step()
+#         print(loss)
 
 
 if __name__ == '__main__':

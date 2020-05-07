@@ -3,3 +3,4 @@
 /MNIST/
 /preTrainedGCNetModel.pth
 /hookCat.py
+/allInOne.py
