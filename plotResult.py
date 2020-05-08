@@ -74,8 +74,6 @@ class GTBNN(torch.nn.Module):
         self.fc2 = torch.nn.Linear(64, 128)
         self.fc3 = torch.nn.Linear(64, 128)
 
-        self.layerNorm=nn.LayerNorm([448,448])
-
         # global grad for hook
         self.image_reconstruction = None
         self.register_hooks()
@@ -188,7 +186,6 @@ class GTBNN(torch.nn.Module):
         #normalize, not tried......
         gradImg= self.image_reconstruction.data#[0].permute(1, 2, 0)
         gradImg=torch.sqrt(gradImg*gradImg)
-        gradImg=self.layerNorm(gradImg)
 
         self.zero_grad()
 
@@ -292,13 +289,10 @@ def main():
     test_loader = data.DataLoader(testset, batch_size=1,
                                   shuffle=False, collate_fn=testset.CUB_collate, num_workers=4)
     criterion = torch.nn.CrossEntropyLoss()
-    solver = torch.optim.SGD(
-        net.parameters(), lr=0.1, weight_decay=1e-5)
-    lrscheduler = torch.optim.lr_scheduler.ReduceLROnPlateau(
-        solver, mode='max', factor=0.1, patience=3, verbose=True,
-        threshold=1e-4)
-    # solver = torch.optim.Adam(net.parameters(),lr=0.3,weight_decay=1e-4)
-    # lrscheduler=torch.optim.lr_scheduler.CosineAnnealingLR(solver,T_max=32)
+    # solver = torch.optim.SGD(
+    #     net.parameters(), lr=0.1, weight_decay=1e-5)
+    solver = torch.optim.Adam(net.parameters(),lr=0.01,weight_decay=1e-4)
+    lrscheduler=torch.optim.lr_scheduler.CosineAnnealingLR(solver,T_max=32)
 
     def _accuracy(net, data_loader):
         """Compute the train/test accuracy.
@@ -349,7 +343,7 @@ def main():
 
             loss.backward()
             solver.step()
-
+            lrscheduler.step()
 
             if (num_total >= cnt * 500):
                 cnt += 1
@@ -364,51 +358,13 @@ def main():
 
         train_acc = (100 * num_correct / num_total).item()
         test_acc = _accuracy(net, test_loader)
-        lrscheduler.step(test_acc)
         if test_acc > best_acc:
             best_acc = test_acc
             best_epoch = t + 1
             print('*', end='')
-        print("Learning rate: "+str(solver.param_groups[0]['lr']))
         print('%d\t%4.3f\t\t%4.2f%%\t\t%4.2f%%' %
               (t + 1, sum(epoch_loss) / len(epoch_loss), train_acc, test_acc), flush=True)
 
-# def main():
-#     # tmpNet=torch.nn.DataParallel(CGNN()).cuda()
-#     # tmpNet.load_state_dict(torch.load("preTrainedGCNetModel.pth"))
-#     # tmpNet.eval()
-#     # state_dict=tmpNet.state_dict()
-#     # print(state_dict)
-#     #####test code
-#     # net = torch.nn.DataParallel(GTBNN()).cuda()
-#     net=GTBNN()
-#     print(net)
-#     dummy_input = torch.rand(1, 3, 448, 448)
-#     dummy_input.requires_grad=True
-#     torch.onnx.export(net,dummy_input,"GSBModel.onnx",verbose=True)
-#     return
-#     trainset = CUB200_loader(os.getcwd() + '/data/CUB_200_2011')
-#     train_loader = data.DataLoader(trainset, batch_size=4,
-#                                    shuffle=True, collate_fn=trainset.CUB_collate, num_workers=1)  # shuffle?
-#     criterion = torch.nn.CrossEntropyLoss()
-#     solver = torch.optim.SGD(
-#         net.parameters(), lr=1,
-#         momentum=0.9, weight_decay=1e-5)
-#     for X, y in train_loader:
-#         X = torch.autograd.Variable(X.cuda())
-#         y = torch.autograd.Variable(y.cuda())
-#         solver.zero_grad()
-#         # Forward pass.
-#         X.requires_grad=True
-#         score = net(X)
-#         loss = criterion(score, y)
-#         # epoch_loss.append(loss.data[0])
-#         # Prediction.
-#         _, prediction = torch.max(score.data, 1)
-#         print(torch.sum(prediction == y.data),flush=True)
-#         loss.backward()
-#         solver.step()
-#         print(loss)
 
 
 if __name__ == '__main__':
