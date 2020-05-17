@@ -38,6 +38,17 @@ logger=get_log('test.log')
 
 resultGradImg=None
 
+def normalize(I):
+    # 归一化梯度map，先归一化到 mean=0 std=1
+    norm = (I - I.mean()) / I.std()
+    # 把 std 重置为 0.1，让梯度map中的数值尽可能接近 0
+    norm = norm * 0.1
+    # 均值加 0.5，保证大部分的梯度值为正
+    norm = norm + 0.5
+    # 把 0，1 以外的梯度值分别设置为 0 和 1
+    norm = norm.clip(0, 1)
+    return norm
+
 torch.manual_seed(1)
 torch.cuda.manual_seed_all(1)
 
@@ -180,54 +191,20 @@ class GTBNN(torch.nn.Module):
         first_layer = modules[0][1]
         first_layer.register_backward_hook(first_layer_hook_fn)
 
-    def weightByGrad(self, Xi,Xo):
+    def weightByGrad(self, Xi,i):
         XiSum=torch.sum(Xi,dim=1)
         XiSum.backward(torch.ones(XiSum.shape).cuda(),retain_graph=True)
         #normalize, not tried......
-        gradImg= self.image_reconstruction.data#[0].permute(1, 2, 0)
-        gradImg=torch.sqrt(gradImg*gradImg)
+        gradImg= self.image_reconstruction.data[0].permute(1, 2, 0)#0 for only one image
+        global resultGradImg
+        resultGradImg=normalize(gradImg.cpu().numpy())
+        # plt.imshow(resultGradImg)
+        plt.imsave('gradImgs/'+str(i)+'.jpg',resultGradImg)
 
         self.zero_grad()
 
-        res=gradImg*Xo
-        return res
 
-
-    # Spatial transformer network forward function
-    def stn(self, x,i):
-        xs = self.localization[i](x)
-        xs = xs.view(-1, 64 * 14 * 14)
-        theta = self.fc_loc[i](xs)
-        theta = theta.view(-1, 2, 3)
-
-        grid = F.affine_grid(theta,torch.Size([x.size()[0], x.size()[1], 96, 96]))# x.size())
-        x = F.grid_sample(x, grid)
-
-        return x
-
-
-    def BCNN_N(self,X):#parameter calculate undone!
-        # N = X.size()[0]
-        # assert X.size() == (N, 3, 448, 448)
-        # X=nn.MaxPool2d(kernel_size=8, stride=8).cuda()(X)
-        # X=nn.Linear(3*56*56,200).cuda()(X.view(-1,3*56*56))
-        #
-        # assert X.size() == (N, 200)
-        # return X
-
-        N = X.size()[0]
-        assert X.size() == (N, 3, 96, 96)
-        X = self.bcnnConv(X)
-        assert X.size() == (N, 256, 24, 24)
-        X = X.view(N, 256, 24 ** 2)
-        X = torch.bmm(X, torch.transpose(X, 1, 2)) / (24 ** 2)  # Bilinear
-        assert X.size() == (N, 256, 256)
-        X = X.view(N, 256 ** 2)
-        X = torch.sqrt(X + 1e-5)
-        X = torch.nn.functional.normalize(X)
-        X = self.fc(X)
-        assert X.size() == (N, 200)
-        return X
+        return
 
 
     def forward(self, Xo):
@@ -241,36 +218,12 @@ class GTBNN(torch.nn.Module):
         assert Xo.size() == (N, 3, 448, 448)
         X = self.features(Xo)
         assert X.size() == (N, 128, 224, 224)
-        Xp = nn.MaxPool2d(kernel_size=8, stride=8)(X)
-        assert Xp.size() == (N, 128, 28, 28)
-        Xp = Xp.view(-1, 128 * 28 * 28)
-        # 3 way, get attention mask
-        X1 = F.relu(self.fc1_(Xp))
-        X2 = F.relu(self.fc2_(Xp))
-        X3 = F.relu(self.fc3_(Xp))
-        X1 = self.fc1(X1)
-        X2 = self.fc2(X2)
-        X3 = self.fc3(X3)
-        # multiple mask elementwisely, get 3 attention part
-        X1 = X1.unsqueeze(dim=2).unsqueeze(dim=3) * X
-        X2 = X2.unsqueeze(dim=2).unsqueeze(dim=3) * X
-        X3 = X3.unsqueeze(dim=2).unsqueeze(dim=3) * X
-        #get the graduate w.r.t input image and multiple, then X1 become N*3*448*448
-        X1=self.weightByGrad(X1,Xo)
-        X2=self.weightByGrad(X2,Xo)
-        X3=self.weightByGrad(X3,Xo)
-        # use stn to crop, size become (N,3,96,96)
-        X1 = self.stn(X1, 0)
-        X2 = self.stn(X2, 1)
-        X3 = self.stn(X3, 2)
-        #3 BCNN 3 size==(N,200)
-        X1=self.BCNN_N(X1)
-        X2=self.BCNN_N(X2)
-        X3=self.BCNN_N(X3)
-        #sum them up, for the predict max
-        res=X1+X2+X3
+        cnt=0
+        for fm in X[0]:
+            self.weightByGrad(fm.unsqueeze(dim=0).unsqueeze(dim=0),cnt)
+            cnt=cnt+1
 
-        return res
+        return X
 
 
 def main():
@@ -329,10 +282,26 @@ def main():
         for X, y in train_loader:
             X = torch.autograd.Variable(X.cuda())
             y = torch.autograd.Variable(y.cuda())
+            print(y,flush=True)
             solver.zero_grad()
-            # Forward pass.
-            X.requires_grad = True
-            score = net(X)
+
+            result = X.data[0].permute(1, 2, 0).cpu().numpy()
+            result = normalize(result)
+            print(result.size)
+            plt.imshow(result)
+            plt.show()
+
+            a=input('Choose or not?')
+            if(eval(a)==1):
+                # Forward pass.
+                X.requires_grad = True
+                score = net(X)
+                break
+            else:
+                continue
+
+            break # for img
+
             loss = criterion(score, y)
             # epoch_loss.append(loss.data[0])
             epoch_loss.append(loss.data.item())
@@ -356,14 +325,6 @@ def main():
                 logger.handlers[1].flush()
                 # break
 
-        train_acc = (100 * num_correct / num_total).item()
-        test_acc = _accuracy(net, test_loader)
-        if test_acc > best_acc:
-            best_acc = test_acc
-            best_epoch = t + 1
-            print('*', end='')
-        print('%d\t%4.3f\t\t%4.2f%%\t\t%4.2f%%' %
-              (t + 1, sum(epoch_loss) / len(epoch_loss), train_acc, test_acc), flush=True)
 
 
 

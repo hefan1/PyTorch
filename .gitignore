@@ -4,3 +4,6 @@
 /preTrainedGCNetModel.pth
 /hookCat.py
 /allInOne.py
+/gradImgs/
+/allInOneNoStn.py
+/getNewTTS.py
