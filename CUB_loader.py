@@ -6,6 +6,8 @@ import numpy as np
 import torch
 import torch.utils.data as data
 import torchvision.transforms as transforms
+torch.manual_seed(1)
+torch.cuda.manual_seed_all(1)
 
 '''
 
