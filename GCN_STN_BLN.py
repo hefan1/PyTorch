@@ -372,7 +372,7 @@ def main():
     solver = torch.optim.SGD([
         {'params': gcn_params, 'lr': 0.02},
         {'params': bcn_params, 'lr': 0.02}
-    ], lr=0.001, momentum=0.9, weight_decay=1e-8)
+    ], lr=0.001, momentum=0.9, weight_decay=5e-4)
     lrscheduler = torch.optim.lr_scheduler.ReduceLROnPlateau(
         solver, mode='max', factor=0.2, patience=3, verbose=True,
         threshold=1e-4)
@@ -430,7 +430,7 @@ def main():
             solver.step()
 
 
-            if (num_total >= cnt * 500):
+            if (num_total >= cnt * 2000):
                 cnt += 1
                 logger.info("Train Acc: " + str((100 * num_correct / num_total).item()) + "%" + "\n" + str(
                     num_correct) + " " + str(num_total) + "\n" + str(prediction) + " " + str(y.data) + "\n" + str(
@@ -449,7 +449,7 @@ def main():
               (t + 1, solver.param_groups[0]['lr'],sum(epoch_loss) / len(epoch_loss), train_acc, test_acc))
         logger.handlers[1].flush()
 
-        torch.save(net.state_dict(),'/data/GCN_CBLN_DiffLr.pth')
+    torch.save(net.state_dict(),'/data/GCN_CBLN_DiffLr.pth')
 
 
 

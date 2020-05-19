@@ -455,7 +455,7 @@ def main():
               (t + 1, solver.param_groups[0]['lr'],sum(epoch_loss) / len(epoch_loss), train_acc, test_acc))
         logger.handlers[1].flush()
 
-        torch.save(net.state_dict(),'/data/GCN_CBLN_DiffLr.pth')
+    torch.save(net.state_dict(),'/data/GCN_CBLN_DiffLr.pth')
 
 
 

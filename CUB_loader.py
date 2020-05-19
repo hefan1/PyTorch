@@ -21,8 +21,8 @@ class CUB200_loader(data.Dataset):
         # std = 255.
         # means = [109.97 , 127.34 , 123.88 ]
 
-        # split_list = open(os.path.join(root, 'train_test_split.txt')).readlines()
-        split_list = open(os.path.join(root, 'tts2.txt')).readlines()
+        split_list = open(os.path.join(root, 'train_test_split.txt')).readlines()
+        # split_list = open(os.path.join(root, 'tts2.txt')).readlines()
         self.idx2name = []
         classes = open(os.path.join(root, 'classes.txt')).readlines()
         self._imgpath = []
