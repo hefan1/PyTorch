@@ -118,3 +118,19 @@ tensor(0.0120, device='cuda:0')
 tensor(1, device='cuda:0') 1
 tensor([0], device='cuda:0') tensor([0], device='cuda:0')
 tensor(0.0095, device='cuda:0')
+2020-05-09 17:01:24,058 - INFO - Train Acc: 0%
+tensor(0, device='cuda:0') 1
+tensor([59], device='cuda:0') tensor([95], device='cuda:0')
+tensor(5.3067, device='cuda:0')
+2020-05-09 18:01:11,619 - INFO - Train Acc: 0%
+tensor(0, device='cuda:0') 1
+tensor([199], device='cuda:0') tensor([0], device='cuda:0')
+tensor(5.2827, device='cuda:0')
+2020-05-09 19:02:34,434 - INFO - Train Acc: 0%
+tensor(0, device='cuda:0') 1
+tensor([199], device='cuda:0') tensor([0], device='cuda:0')
+tensor(5.2827, device='cuda:0')
+2020-05-09 19:04:22,802 - INFO - Train Acc: 0%
+tensor(0, device='cuda:0') 1
+tensor([199], device='cuda:0') tensor([0], device='cuda:0')
+tensor(5.2827, device='cuda:0')

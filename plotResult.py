@@ -191,20 +191,24 @@ class GTBNN(torch.nn.Module):
         first_layer = modules[0][1]
         first_layer.register_backward_hook(first_layer_hook_fn)
 
-    def weightByGrad(self, Xi,i):
+    def weightByGrad(self, Xi,i,Xo):
         XiSum=torch.sum(Xi,dim=1)
         XiSum.backward(torch.ones(XiSum.shape).cuda(),retain_graph=True)
         #normalize, not tried......
-        gradImg= self.image_reconstruction.data[0].permute(1, 2, 0)#0 for only one image
+        gradImg= self.image_reconstruction.data[0]#.permute(1, 2, 0)#0 for only one image
         global resultGradImg
-        resultGradImg=normalize(gradImg.cpu().numpy())
-        # plt.imshow(resultGradImg)
-        plt.imsave('gradImgs/'+str(i)+'.jpg',resultGradImg)
+        resultGradImg=normalize(gradImg.permute(1, 2, 0).cpu().numpy())
+        plt.imshow(resultGradImg)
+        plt.show()
+        res=gradImg*Xo
+        print(res.size(),flush=True)
+        res=normalize(res.squeeze(dim=0).permute(1, 2, 0).cpu().detach().numpy())
+        plt.imsave('gradImgs'+str(i)+'.jpg',res)
 
         self.zero_grad()
 
 
-        return
+        return res
 
 
     def forward(self, Xo):
@@ -218,10 +222,21 @@ class GTBNN(torch.nn.Module):
         assert Xo.size() == (N, 3, 448, 448)
         X = self.features(Xo)
         assert X.size() == (N, 128, 224, 224)
+        Xp = nn.MaxPool2d(kernel_size=8, stride=8)(X)
+        Xp = Xp.view(-1, 128 * 28 * 28)
+        X1 = F.relu(self.fc1_(Xp))
+        X2 = F.relu(self.fc2_(Xp))
+        X3 = F.relu(self.fc3_(Xp))
+        X1 = self.fc1(X1)
+        X2 = self.fc2(X2)
+        X3 = self.fc3(X3)
         cnt=0
-        for fm in X[0]:
-            self.weightByGrad(fm.unsqueeze(dim=0).unsqueeze(dim=0),cnt)
-            cnt=cnt+1
+        X1 = X1.unsqueeze(dim=2).unsqueeze(dim=3) * X
+        X2 = X2.unsqueeze(dim=2).unsqueeze(dim=3) * X
+        X3 = X3.unsqueeze(dim=2).unsqueeze(dim=3) * X
+        X1 = self.weightByGrad(X1,1, Xo)
+        X2 = self.weightByGrad(X2,2, Xo)
+        X3 = self.weightByGrad(X3,3, Xo)
 
         return X
 
@@ -232,10 +247,21 @@ def main():
     # tmpNet.eval()
     # state_dict=tmpNet.state_dict()
     # print(state_dict)
+
+    train_transforms = torchvision.transforms.Compose([
+        torchvision.transforms.ToPILImage(),
+        torchvision.transforms.Resize(size=448),  # Let smaller edge match
+        torchvision.transforms.RandomHorizontalFlip(),
+        torchvision.transforms.RandomCrop(size=448),
+        torchvision.transforms.ToTensor(),
+        torchvision.transforms.Normalize(mean=(0.485, 0.456, 0.406),
+                                         std=(0.229, 0.224, 0.225))
+    ])
+
     #####test code
     net = torch.nn.DataParallel(GTBNN()).cuda()
     print(net)
-    trainset = CUB200_loader(os.getcwd() + '/data/CUB_200_2011')
+    trainset = CUB200_loader(os.getcwd() + '/data/CUB_200_2011',transform=train_transforms)
     testset = CUB200_loader(os.getcwd() + '/data/CUB_200_2011', split='test')
     train_loader = data.DataLoader(trainset, batch_size=1,
                                    shuffle=True, collate_fn=trainset.CUB_collate, num_workers=4)  # shuffle?

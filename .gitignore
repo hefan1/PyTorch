@@ -7,3 +7,7 @@
 /gradImgs/
 /allInOneNoStn.py
 /getNewTTS.py
+/GCN_CBLNori.py
+/GCN_VGG.py
+/transformTest.py
+/GCN_CBLN_DiffLr.py

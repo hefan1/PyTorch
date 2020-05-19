@@ -18,6 +18,32 @@ torch.manual_seed(1)
 torch.cuda.manual_seed_all(1)
 
 
+
+
+import logging
+def get_log(file_name):
+    logger = logging.getLogger('train')  # 设定logger的名字
+    logger.setLevel(logging.INFO)  # 设定logger得等级
+
+    ch = logging.StreamHandler() # 输出流的hander，用与设定logger的各种信息
+    ch.setLevel(logging.INFO)  # 设定输出hander的level
+
+    fh = logging.FileHandler(file_name, mode='a')  # 文件流的hander，输出得文件名称，以及mode设置为覆盖模式
+    fh.setLevel(logging.INFO)  # 设定文件hander得lever
+
+
+
+    formatter = logging.Formatter('%(asctime)s - %(levelname)s - %(message)s')
+    ch.setFormatter(formatter)  # 两个hander设置个是，输出得信息包括，时间，信息得等级，以及message
+    fh.setFormatter(formatter)
+    logger.addHandler(fh)  # 将两个hander添加到我们声明的logger中去
+    logger.addHandler(ch)
+    return logger
+
+logger=get_log('/data/oriBcnn.log')
+# logger=get_log('test.log')
+
+
 class BCNN(torch.nn.Module):
     """B-CNN for CUB200.
     The B-CNN model is illustrated as follows.
@@ -86,9 +112,9 @@ class BCNNManager(object):
         self._options = options
         self._path = path
         # Network.
-        #self._net = torch.nn.DataParallel(BCNN()).cuda()
+        self._net = torch.nn.DataParallel(BCNN()).cuda()
         #no cuda
-        self._net=BCNN()
+        # self._net=BCNN()
         # Load the model from disk.
         #self._net.load_state_dict(torch.load(self._path['model']))#not now
         print(self._net)
@@ -104,6 +130,7 @@ class BCNNManager(object):
             threshold=1e-4)
 
         train_transforms = torchvision.transforms.Compose([
+            torchvision.transforms.ToPILImage(),
             torchvision.transforms.Resize(size=448),  # Let smaller edge match
             torchvision.transforms.RandomHorizontalFlip(),
             torchvision.transforms.RandomCrop(size=448),
@@ -112,6 +139,7 @@ class BCNNManager(object):
                                              std=(0.229, 0.224, 0.225))
         ])
         test_transforms = torchvision.transforms.Compose([
+            torchvision.transforms.ToPILImage(),
             torchvision.transforms.Resize(size=448),
             torchvision.transforms.CenterCrop(size=448),
             torchvision.transforms.ToTensor(),
@@ -130,12 +158,12 @@ class BCNNManager(object):
         # self._test_loader = torch.utils.data.DataLoader(
         #     test_data, batch_size=16,
         #     shuffle=False, num_workers=4, pin_memory=True)
-        trainset = CUB200_loader(os.getcwd() + '/data/CUB_200_2011')
-        testset = CUB200_loader(os.getcwd() + '/data/CUB_200_2011')
+        trainset = CUB200_loader(os.getcwd() + '/data/CUB_200_2011',transform=train_transforms)
+        testset = CUB200_loader(os.getcwd() + '/data/CUB_200_2011',split='test',transform=test_transforms)
         self._train_loader = data.DataLoader(trainset, batch_size=self._options['batch_size'],
-                                      shuffle=True, collate_fn=trainset.CUB_collate, num_workers=1)#shuffle?
+                                      shuffle=True, collate_fn=trainset.CUB_collate, num_workers=4)#shuffle?
         self._test_loader = data.DataLoader(testset, batch_size=self._options['batch_size'],
-                                     shuffle=False, collate_fn=testset.CUB_collate, num_workers=1)
+                                     shuffle=False, collate_fn=testset.CUB_collate, num_workers=4)
 
 
     def train(self):
@@ -145,14 +173,15 @@ class BCNNManager(object):
         best_epoch = None
         print('Epoch\tTrain loss\tTrain acc\tTest acc')
         for t in range(self._options['epochs']):
+            cnt = 0
             epoch_loss = []
             num_correct = 0
             num_total = 0
             for X, y in self._train_loader:
                 # Data.
                 #no cuda
-                # X = torch.autograd.Variable(X.cuda())
-                # y = torch.autograd.Variable(y.cuda(async=True))
+                X = torch.autograd.Variable(X.cuda())
+                y = torch.autograd.Variable(y.cuda())
 
                 # Clear the existing gradients.
                 self._solver.zero_grad()
@@ -166,11 +195,13 @@ class BCNNManager(object):
                 num_total += y.size(0)
                 num_correct += torch.sum(prediction == y.data)
 
-                if(num_total%1==0):
-                    print("Train Acc: "+str((100 * num_correct / num_total).item())+"%")
-                    print(str(num_correct)+" "+str(num_total))
-                    print(str(prediction)+" "+str(y.data))
-                    print(str(loss.data))
+                if(num_total>=cnt*500):
+                    cnt=cnt+1
+                    logger.info("Train Acc: "+str((100 * num_correct / num_total).item())+"%"
+                                +'\n'+str(num_correct)+" "+str(num_total)
+                                +'\n'+str(prediction)+" "+str(y.data)
+                                +'\n'+str(loss.data))
+
 
                 # Backward pass.
                 loss.backward()
@@ -182,8 +213,9 @@ class BCNNManager(object):
                 best_acc = test_acc
                 best_epoch = t + 1
                 print('*', end='')
-            print('%d\t%4.3f\t\t%4.2f%%\t\t%4.2f%%' %
+            logger.info('%d\t%4.3f\t\t%4.2f%%\t\t%4.2f%%' %
                   (t+1, sum(epoch_loss) / len(epoch_loss), train_acc, test_acc))
+        torch.save(self._net.state_dict(),'/data/bilinearOri.pth')
         print('Best at epoch %d, test accuaray %f' % (best_epoch, best_acc))
 
     def _accuracy(self, data_loader):
@@ -198,8 +230,8 @@ class BCNNManager(object):
         num_total = 0
         for X, y in data_loader:
             # Data.
-            # X = torch.autograd.Variable(X.cuda())
-            # y = torch.autograd.Variable(y.cuda(async=True))
+            X = torch.autograd.Variable(X.cuda())
+            y = torch.autograd.Variable(y.cuda())
 
             # Prediction.
             score = self._net(X)
@@ -279,7 +311,7 @@ def main():
     #         assert os.path.isdir(path[d])
 
     manager = BCNNManager(options, path)
-    manager.getStat()
+    # manager.getStat()
     manager.train()
 
 
