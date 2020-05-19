@@ -21,12 +21,13 @@ class CUB200_loader(data.Dataset):
         # std = 255.
         # means = [109.97 , 127.34 , 123.88 ]
 
-        split_list = open(os.path.join(root, 'train_test_split.txt')).readlines()
+        # split_list = open(os.path.join(root, 'train_test_split.txt')).readlines()
+        split_list = open(os.path.join(root, 'tts2.txt')).readlines()
         self.idx2name = []
         classes = open(os.path.join(root, 'classes.txt')).readlines()
         self._imgpath = []
         self._imglabel = []
-        self.transform = None
+        self.transform = transform
 
         for c in classes:
             idx, name = c.strip().split()
@@ -35,8 +36,8 @@ class CUB200_loader(data.Dataset):
         if transform is None and split.lower() == 'train':
             self.transform = transforms.Compose([
                 transforms.ToPILImage(),
-                transforms.Resize(448),
-                transforms.RandomCrop([448, 448]),
+                transforms.Resize(224),
+                transforms.RandomCrop([224, 224]),
                 transforms.RandomHorizontalFlip(),#flip?
                 transforms.ToTensor(),transforms.Normalize(mean=(0.485, 0.456, 0.406),
                                              std=(0.229, 0.224, 0.225))#toTensor had normalization
@@ -44,8 +45,8 @@ class CUB200_loader(data.Dataset):
         elif transform is None and split.lower() == 'test':
             self.transform = transforms.Compose([
                 transforms.ToPILImage(),
-                transforms.Resize(448),
-                transforms.CenterCrop(448),
+                transforms.Resize(224),
+                transforms.CenterCrop(224),
                 transforms.ToTensor(),transforms.Normalize(mean=(0.485, 0.456, 0.406),
                                              std=(0.229, 0.224, 0.225))#,transforms.Normalize(mean=means,std=[std] * 3)
             ])
@@ -86,10 +87,16 @@ class CUB200_loader(data.Dataset):
 
     def __getitem__(self, index):
         img = cv2.imread(self._imgpath[index])
+        # try:
         img = self.transform(img)
         # tmp=torch.max(img)
         cls = self._imglabel[index]
         return img, cls
+        # except:
+        #     print(self._imgpath[index],flush=True)
+        #     print(self.transform,flush=True)
+        #     print(index,flush=True)
+        #     return None,None
 
     def __len__(self):
         return len(self._imglabel)

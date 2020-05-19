@@ -107,78 +107,78 @@ class GTBNN(torch.nn.Module):
         self.GradWeight=1e-1
 
         # ################### STN input N*3*448*448
-        self.localization = [
-                nn.Sequential(
-                nn.MaxPool2d(4,stride=4),#112
-                nn.ReLU(True),
-
-                nn.Conv2d(3, 32, kernel_size=5,stride=1,padding=2),  # 112
-                nn.MaxPool2d(2, stride=2),  # 56
-                nn.ReLU(True),
-
-                nn.Conv2d(32, 48, kernel_size=3,stride=1,padding=1),
-                nn.MaxPool2d(2, stride=2),  # 56/2=28
-                nn.ReLU(True),
-
-                nn.Conv2d(48, 64, kernel_size=3, stride=1, padding=1),
-                nn.MaxPool2d(2, stride=2),  # 28/2=14
-                nn.ReLU(True) #output 64*14*14 64*7*7
-            ).cuda(),
-            nn.Sequential(
-                nn.MaxPool2d(4, stride=4),  # 112
-                nn.ReLU(True),
-
-                nn.Conv2d(3, 32, kernel_size=5, stride=1, padding=2),  # 112
-                nn.MaxPool2d(2, stride=2),  # 56
-                nn.ReLU(True),
-
-                nn.Conv2d(32, 48, kernel_size=3, stride=1, padding=1),
-                nn.MaxPool2d(2, stride=2),  # 56/2=28
-                nn.ReLU(True),
-
-                nn.Conv2d(48, 64, kernel_size=3, stride=1, padding=1),
-                nn.MaxPool2d(2, stride=2),  # 28/2=14
-                nn.ReLU(True)  # output 64*14*14
-            ).cuda(),
-            nn.Sequential(
-                nn.MaxPool2d(4, stride=4),  # 112
-                nn.ReLU(True),
-
-                nn.Conv2d(3, 32, kernel_size=5, stride=1, padding=2),  # 112
-                nn.MaxPool2d(2, stride=2),  # 56
-                nn.ReLU(True),
-
-                nn.Conv2d(32, 48, kernel_size=3, stride=1, padding=1),
-                nn.MaxPool2d(2, stride=2),  # 56/2=28
-                nn.ReLU(True),
-
-                nn.Conv2d(48, 64, kernel_size=3, stride=1, padding=1),
-                nn.MaxPool2d(2, stride=2),  # 28/2=14
-                nn.ReLU(True)  # output 64*14*14
-            ).cuda()
-        ]
-        # Regressor for the 3 * 2 affine matrix
-        self.fc_loc = [
-                nn.Sequential(
-                nn.Linear(64 *7 *7, 32),
-                nn.ReLU(True),
-                nn.Linear(32, 3 * 2)
-            ).cuda(),
-            nn.Sequential(
-                nn.Linear(64 * 7 * 7, 32),
-                nn.ReLU(True),
-                nn.Linear(32, 3 * 2)
-            ).cuda(),
-            nn.Sequential(
-                nn.Linear(64 * 7 * 7, 32),
-                nn.ReLU(True),
-                nn.Linear(32, 3 * 2)
-            ).cuda()
-        ]
+        # self.localization = [
+        #         nn.Sequential(
+        #         nn.MaxPool2d(4,stride=4),#112
+        #         nn.ReLU(True),
+        #
+        #         nn.Conv2d(3, 32, kernel_size=5,stride=1,padding=2),  # 112
+        #         nn.MaxPool2d(2, stride=2),  # 56
+        #         nn.ReLU(True),
+        #
+        #         nn.Conv2d(32, 48, kernel_size=3,stride=1,padding=1),
+        #         nn.MaxPool2d(2, stride=2),  # 56/2=28
+        #         nn.ReLU(True),
+        #
+        #         nn.Conv2d(48, 64, kernel_size=3, stride=1, padding=1),
+        #         nn.MaxPool2d(2, stride=2),  # 28/2=14
+        #         nn.ReLU(True) #output 64*14*14
+        #     ).cuda(),
+        #     nn.Sequential(
+        #         nn.MaxPool2d(4, stride=4),  # 112
+        #         nn.ReLU(True),
+        #
+        #         nn.Conv2d(3, 32, kernel_size=5, stride=1, padding=2),  # 112
+        #         nn.MaxPool2d(2, stride=2),  # 56
+        #         nn.ReLU(True),
+        #
+        #         nn.Conv2d(32, 48, kernel_size=3, stride=1, padding=1),
+        #         nn.MaxPool2d(2, stride=2),  # 56/2=28
+        #         nn.ReLU(True),
+        #
+        #         nn.Conv2d(48, 64, kernel_size=3, stride=1, padding=1),
+        #         nn.MaxPool2d(2, stride=2),  # 28/2=14
+        #         nn.ReLU(True)  # output 64*14*14
+        #     ).cuda(),
+        #     nn.Sequential(
+        #         nn.MaxPool2d(4, stride=4),  # 112
+        #         nn.ReLU(True),
+        #
+        #         nn.Conv2d(3, 32, kernel_size=5, stride=1, padding=2),  # 112
+        #         nn.MaxPool2d(2, stride=2),  # 56
+        #         nn.ReLU(True),
+        #
+        #         nn.Conv2d(32, 48, kernel_size=3, stride=1, padding=1),
+        #         nn.MaxPool2d(2, stride=2),  # 56/2=28
+        #         nn.ReLU(True),
+        #
+        #         nn.Conv2d(48, 64, kernel_size=3, stride=1, padding=1),
+        #         nn.MaxPool2d(2, stride=2),  # 28/2=14
+        #         nn.ReLU(True)  # output 64*14*14
+        #     ).cuda()
+        # ]
+        # # Regressor for the 3 * 2 affine matrix
+        # self.fc_loc = [
+        #         nn.Sequential(
+        #         nn.Linear(64 * 14 * 14, 32),
+        #         nn.ReLU(True),
+        #         nn.Linear(32, 3 * 2)
+        #     ).cuda(),
+        #     nn.Sequential(
+        #         nn.Linear(64 * 14 * 14, 32),
+        #         nn.ReLU(True),
+        #         nn.Linear(32, 3 * 2)
+        #     ).cuda(),
+        #     nn.Sequential(
+        #         nn.Linear(64 * 14 * 14, 32),
+        #         nn.ReLU(True),
+        #         nn.Linear(32, 3 * 2)
+        #     ).cuda()
+        # ]
         # # Initialize the weights/bias with identity transformation
-        for fc_locx in self.fc_loc:
-            fc_locx[2].weight.data.zero_()
-            fc_locx[2].bias.data.copy_(torch.tensor([1, 0, 0, 0, 1, 0], dtype=torch.float))
+        # for fc_locx in self.fc_loc:
+        #     fc_locx[2].weight.data.zero_()
+        #     fc_locx[2].bias.data.copy_(torch.tensor([1, 0, 0, 0, 1, 0], dtype=torch.float))
 
         ########################Bilinear CNN output 256 channels
         self.bcnnConv_1=torch.nn.Sequential(*list(torchvision.models.vgg16(pretrained=True).features.children())
@@ -242,7 +242,7 @@ class GTBNN(torch.nn.Module):
     # Spatial transformer network forward function
     def stn(self, x,i):
         xs = self.localization[i](x)
-        xs = xs.view(-1, 64 * 7 * 7)
+        xs = xs.view(-1, 64 * 14 * 14)
         theta = self.fc_loc[i](xs)
         theta = theta.view(-1, 2, 3)
 
@@ -254,13 +254,13 @@ class GTBNN(torch.nn.Module):
 
     def BCNN_N(self,X,bcnnConv,fc):#parameter calculate undone!
         N = X.size()[0]
-        # assert X.size() == (N, 3, 224, 224)
+        assert X.size() == (N, 3, 224, 224)
         X = nn.Dropout2d(p=0.5)(bcnnConv(X))
         # X = bcnnConv(X)
-        # assert X.size() == (N, 512, 14, 14)#224/16
+        assert X.size() == (N, 512, 14, 14)
 
-        X = X.view(N, 512, 6 ** 2)
-        X = torch.bmm(X, torch.transpose(X, 1, 2)) / (6 ** 2)  # Bilinear
+        X = X.view(N, 512, 14 ** 2)
+        X = torch.bmm(X, torch.transpose(X, 1, 2)) / (14 ** 2)  # Bilinear
         assert X.size() == (N, 512, 512)
         X = X.view(N, 512 ** 2)
         X = torch.sqrt(X + 1e-5)
@@ -327,9 +327,9 @@ class GTBNN(torch.nn.Module):
         X2=self.weightByGrad(X2,Xo)
         X3=self.weightByGrad(X3,Xo)
         # use stn to crop, size become (N,3,96,96)
-        X1 = self.stn(X1, 0)
-        X2 = self.stn(X2, 1)
-        X3 = self.stn(X3, 2)
+        # X1 = self.stn(X1, 0)
+        # X2 = self.stn(X2, 1)
+        # X3 = self.stn(X3, 2)
         #3 BCNN 3 size==(N,200)
         X1=self.BCNN_N(X1,self.bcnnConv_1,self.bfc1)
         X2=self.BCNN_N(X2,self.bcnnConv_2,self.bfc2)
@@ -341,6 +341,12 @@ class GTBNN(torch.nn.Module):
 
 
 def main():
+    # tmpNet=torch.nn.DataParallel(CGNN()).cuda()
+    # tmpNet.load_state_dict(torch.load("preTrainedGCNetModel.pth"))
+    # tmpNet.eval()
+    # state_dict=tmpNet.state_dict()
+    # print(state_dict)
+    #####test code
     net = torch.nn.DataParallel(GTBNN()).cuda()
     print(net)
     trainset = CUB200_loader(os.getcwd() + '/data/CUB_200_2011')
