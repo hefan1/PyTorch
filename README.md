@@ -1,14 +1,8 @@
 ## 基于视觉注意力机制的细粒度图像分类方法 代码仓库
 环境包版本 requirements.txt：
 ```
-certifi==2020.4.5.1
-cffi==1.14.0
-cycler==0.10.0
-joblib==0.14.1
-kiwisolver==1.1.0
 matplotlib==3.1.3
 numpy==1.18.1
-olefile==0.46
 pandas==1.0.3
 Pillow==7.0.0
 pycparser==2.19
@@ -20,9 +14,6 @@ scipy==1.4.1
 six==1.14.0
 torch==1.4.0
 torchvision==0.5.0
-tornado==6.0.3
-wincertstore==0.2
-
 ```
 
 ## 使用方法
