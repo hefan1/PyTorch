@@ -35,7 +35,7 @@ class CARS196_loader(data.Dataset):
             image_label_list=loadmat(os.path.join(root, 'car_devkit','devkit','cars_train_annos.mat'))['annotations'][0]
             imgBase=os.path.join(root, 'cars_train')
         else:
-            image_label_list =loadmat(os.path.join(root, 'car_devkit','devkit','cars_test_annos.mat'))['annotations'][0]
+            image_label_list =loadmat(os.path.join(root, 'car_devkit','devkit','cars_test_annos_withlabels.mat'))['annotations'][0]
             imgBase = os.path.join(root, 'cars_test')
 
         for line in image_label_list:
@@ -103,7 +103,7 @@ if __name__ == '__main__':
         if cnt > 10:
             break
 
-    testset = CARS196_loader(os.path.join(os.getcwd(),'data','CAR_196'))
+    testset = CARS196_loader(os.path.join(os.getcwd(),'data','CAR_196'),split='test')
     testloader = data.DataLoader(testset, batch_size=6,
                                  shuffle=False, collate_fn=testset.CARS_collate, num_workers=1)
 
