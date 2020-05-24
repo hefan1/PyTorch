@@ -52,6 +52,12 @@ def normalize(I):
 torch.manual_seed(1)
 torch.cuda.manual_seed_all(1)
 
+#visualize tensor (3,H,W)
+def visualize(X):
+    X=normalize(X.permute(1, 2, 0).cpu().detach().numpy())
+    plt.imshow(X)
+    plt.show()
+
 
 class GTBNN(torch.nn.Module):
     """B-CNN for CUB200.
@@ -85,6 +91,7 @@ class GTBNN(torch.nn.Module):
         self.fc2 = torch.nn.Linear(64, 128)
         self.fc3 = torch.nn.Linear(64, 128)
 
+        self.layerNorm = nn.LayerNorm([448, 448])
         # global grad for hook
         self.image_reconstruction = None
         self.register_hooks()
@@ -195,21 +202,36 @@ class GTBNN(torch.nn.Module):
         XiSum=torch.sum(Xi,dim=1)
         XiSum.backward(torch.ones(XiSum.shape).cuda(),retain_graph=True)
         #normalize, not tried......
-        gradImg= self.image_reconstruction.data[0]#.permute(1, 2, 0)#0 for only one image
-        global resultGradImg
-        resultGradImg=normalize(gradImg.permute(1, 2, 0).cpu().numpy())
-        plt.imshow(resultGradImg)
-        plt.show()
-        res=gradImg*Xo
-        print(res.size(),flush=True)
-        res=normalize(res.squeeze(dim=0).permute(1, 2, 0).cpu().detach().numpy())
-        plt.imsave('gradImgs'+str(i)+'.jpg',res)
+        gradImg= self.image_reconstruction.data#[0]#.permute(1, 2, 0)#0 for only one image
+        gradImg = torch.sqrt(gradImg * gradImg)  # needed
+        gradImg = self.layerNorm(gradImg)
+        # global resultGradImg
+        # resultGradImg=normalize(gradImg.permute(1, 2, 0).cpu().numpy())
+        # plt.imshow(resultGradImg)
+        # plt.show()
+        res=gradImg*0.5*Xo+Xo
+        # print(res.size(),flush=True)
+        # res=normalize(res.squveeze(dim=0).permute(1, 2, 0).cpu().detach().numpy())
+        # plt.imsave('gradImgs'+str(i)+'.jpg',res)
 
         self.zero_grad()
-
+        visualize(res[0])
 
         return res
 
+    # Spatial transformer network forward function
+    def stn(self, x, i):
+        xs = self.localization[i](x)
+        xs = xs.view(-1, 64 * 14 * 14)
+        theta = self.fc_loc[i](xs)
+        theta = theta.view(-1, 2, 3)
+
+        grid = F.affine_grid(theta, torch.Size([x.size()[0], x.size()[1], 96, 96]))  # x.size())
+        x = F.grid_sample(x, grid)
+
+        visualize(x[0])
+
+        return x
 
     def forward(self, Xo):
         """Forward pass of the network.
@@ -237,6 +259,11 @@ class GTBNN(torch.nn.Module):
         X1 = self.weightByGrad(X1,1, Xo)
         X2 = self.weightByGrad(X2,2, Xo)
         X3 = self.weightByGrad(X3,3, Xo)
+
+        # use stn to crop, size become (N,3,96,96)
+        X1 = self.stn(X1, 0)
+        X2 = self.stn(X2, 1)
+        X3 = self.stn(X3, 2)
 
         return X
 

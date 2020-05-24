@@ -13,6 +13,8 @@ import torchvision
 import torch.utils.data as data
 
 from CUB_loader import CUB200_loader
+from AIRCRAFT_loader import AIR100_loader
+from CARS_loader import CARS196_loader
 
 torch.manual_seed(1)
 torch.cuda.manual_seed_all(1)
@@ -40,8 +42,8 @@ def get_log(file_name):
     logger.addHandler(ch)
     return logger
 
-logger=get_log('/data/oriBcnn.log')
-# logger=get_log('test.log')
+# logger=get_log('/data/oriBcnn.log')
+logger=get_log('test.log')
 
 
 class BCNN(torch.nn.Module):
@@ -90,6 +92,23 @@ class BCNN(torch.nn.Module):
         assert X.size() == (N, 200)
         return X
 
+train_transforms = torchvision.transforms.Compose([
+    torchvision.transforms.ToPILImage(),
+    torchvision.transforms.Resize(size=448),  # Let smaller edge match
+    torchvision.transforms.RandomHorizontalFlip(),
+    torchvision.transforms.RandomCrop(size=448),
+    torchvision.transforms.ToTensor()
+    # torchvision.transforms.Normalize(mean=(0.485, 0.456, 0.406),
+    #                                  std=(0.229, 0.224, 0.225))
+])
+test_transforms = torchvision.transforms.Compose([
+    torchvision.transforms.ToPILImage(),
+    torchvision.transforms.Resize(size=448),
+    torchvision.transforms.CenterCrop(size=448),
+    torchvision.transforms.ToTensor()
+    # torchvision.transforms.Normalize(mean=(0.485, 0.456, 0.406),
+    #                                  std=(0.229, 0.224, 0.225))
+])
 
 class BCNNManager(object):
     """Manager class to train bilinear CNN.
@@ -110,7 +129,7 @@ class BCNNManager(object):
         """
         print('Prepare the network and data.')
         self._options = options
-        self._path = path
+        self._path = path['dataset']
         # Network.
         self._net = torch.nn.DataParallel(BCNN()).cuda()
         #no cuda
@@ -129,23 +148,7 @@ class BCNNManager(object):
             self._solver, mode='max', factor=0.1, patience=3, verbose=True,
             threshold=1e-4)
 
-        train_transforms = torchvision.transforms.Compose([
-            torchvision.transforms.ToPILImage(),
-            torchvision.transforms.Resize(size=448),  # Let smaller edge match
-            torchvision.transforms.RandomHorizontalFlip(),
-            torchvision.transforms.RandomCrop(size=448),
-            torchvision.transforms.ToTensor(),
-            torchvision.transforms.Normalize(mean=(0.485, 0.456, 0.406),
-                                             std=(0.229, 0.224, 0.225))
-        ])
-        test_transforms = torchvision.transforms.Compose([
-            torchvision.transforms.ToPILImage(),
-            torchvision.transforms.Resize(size=448),
-            torchvision.transforms.CenterCrop(size=448),
-            torchvision.transforms.ToTensor(),
-            torchvision.transforms.Normalize(mean=(0.485, 0.456, 0.406),
-                                             std=(0.229, 0.224, 0.225))
-        ])
+
         # train_data = cub200.CUB200(
         #     root=self._path['cub200'], train=True, download=True,
         #     transform=train_transforms)
@@ -158,12 +161,12 @@ class BCNNManager(object):
         # self._test_loader = torch.utils.data.DataLoader(
         #     test_data, batch_size=16,
         #     shuffle=False, num_workers=4, pin_memory=True)
-        trainset = CUB200_loader(os.getcwd() + '/data/CUB_200_2011',transform=train_transforms)
-        testset = CUB200_loader(os.getcwd() + '/data/CUB_200_2011',split='test',transform=test_transforms)
-        self._train_loader = data.DataLoader(trainset, batch_size=self._options['batch_size'],
-                                      shuffle=True, collate_fn=trainset.CUB_collate, num_workers=4)#shuffle?
-        self._test_loader = data.DataLoader(testset, batch_size=self._options['batch_size'],
-                                     shuffle=False, collate_fn=testset.CUB_collate, num_workers=4)
+        # trainset = CUB200_loader(self._path,transform=train_transforms)
+        # testset = CUB200_loader(self._path,split='test',transform=test_transforms)
+        # self._train_loader = data.DataLoader(trainset, batch_size=self._options['batch_size'],
+        #                               shuffle=True, collate_fn=trainset.CUB_collate, num_workers=4)#shuffle?
+        # self._test_loader = data.DataLoader(testset, batch_size=self._options['batch_size'],
+        #                              shuffle=False, collate_fn=testset.CUB_collate, num_workers=4)
 
 
     def train(self):
@@ -251,9 +254,11 @@ class BCNNManager(object):
         # train_loader = torch.utils.data.DataLoader(
         #     train_data, batch_size=1, shuffle=False, num_workers=4,
         #     pin_memory=True)
-        trainset = CUB200_loader(os.getcwd() + '/data/CUB_200_2011')
+        # trainset = AIR100_loader(self._path, transform=train_transforms)
+        # trainset = CARS196_loader(self._path, transform=train_transforms)
+        trainset = CUB200_loader(self._path,transform=train_transforms)
         train_loader = data.DataLoader(trainset, batch_size=4,
-                                      shuffle=False, collate_fn=trainset.CUB_collate, num_workers=1)
+                                      shuffle=False, collate_fn=trainset.CUB_collate, num_workers=4)
         mean = torch.zeros(3)
         std = torch.zeros(3)
         for X, _ in train_loader:
@@ -262,8 +267,8 @@ class BCNNManager(object):
                 std[d] += X[:, d, :, :].std()
         mean.div_(len(trainset))
         std.div_(len(trainset))
-        print(mean)
-        print(std)
+        print(mean,flush=True)
+        print(std,flush=True)
 
 
 def main():
@@ -300,7 +305,7 @@ def main():
 
     project_root = os.popen('pwd').read().strip()
     path = {
-        'cub200': os.path.join(project_root, 'data/CUB_200_2011'),
+        'dataset': os.path.join(project_root, 'data/CUB_200_2011'),# 'dataset': os.path.join(project_root, 'data/AIRCRAFT'),
         'model': os.path.join(project_root, 'model', args.model),
     }
     #not now
@@ -311,8 +316,8 @@ def main():
     #         assert os.path.isdir(path[d])
 
     manager = BCNNManager(options, path)
-    # manager.getStat()
-    manager.train()
+    manager.getStat()
+    # manager.train()
 
 
 if __name__ == '__main__':

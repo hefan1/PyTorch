@@ -15,12 +15,6 @@ torch.cuda.manual_seed_all(1)
 class CUB200_loader(data.Dataset):
     def __init__(self, root, split='train', transform=None):
 
-        std = 1. / 255.
-        means = [109.97 / 255., 127.34 / 255., 123.88 / 255.]
-
-        # std = 255.
-        # means = [109.97 , 127.34 , 123.88 ]
-
         split_list = open(os.path.join(root, 'train_test_split.txt')).readlines()
         # split_list = open(os.path.join(root, 'tts2.txt')).readlines()
         self.idx2name = []
@@ -59,7 +53,7 @@ class CUB200_loader(data.Dataset):
         for line in split_list:
             idx, is_train = line.strip().split()
             if int(is_train) == 1:
-                train_list.append(int(idx) - 1)
+                train_list.append(int(idx) - 1)#1 to 0
             else:
                 test_list.append(int(idx) - 1)
 
