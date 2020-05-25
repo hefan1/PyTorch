@@ -1,4 +1,3 @@
-/data/
 /cifar_net.pth
 /MNIST/
 /preTrainedGCNetModel.pth
@@ -14,3 +13,8 @@
 /GCN_STN_BLN_v2.py
 /AIRCRAFT_loader.py
 /GCN_STN_BLN_DiffLr.pth
+/data/AIRCRAFT/
+/data/CAR_196/
+/data/CUB_200_2011/
+/data/cat.jpg
+/data/GCN_STN_BLN_DiffLr.log
