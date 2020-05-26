@@ -34,7 +34,7 @@ def main():
         y = torch.autograd.Variable(y.cuda())
         X.requires_grad = True
         # Prediction.
-        score, cgs = net(X)
+        score = net(X)
         _, prediction = torch.max(score.data, 1)
         num_total += y.size(0)
         num_correct += torch.sum(prediction == y.data).item()
