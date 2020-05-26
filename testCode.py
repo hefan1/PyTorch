@@ -38,7 +38,7 @@ def main():
         _, prediction = torch.max(score.data, 1)
         num_total += y.size(0)
         num_correct += torch.sum(prediction == y.data).item()
-    print('Test accuracy is %.2f%%'%(100 * num_correct / num_total))
+    print('Test accuracy on CUB_200_2011 dataset is %.2f'%(100 * num_correct / num_total))
 
 if __name__ =='__main__':
     main()
