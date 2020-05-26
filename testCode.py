@@ -21,7 +21,7 @@ from GCN_STN_BLN import GTBNN
 
 def main():
     net=torch.nn.DataParallel(GTBNN()).cuda()
-    net.load_state_dict(torch.load('GCN_STN_BLN_DiffLr.pth'))
+    net.load_state_dict(torch.load('GCN_STN_BLN_DiffLrCUB.pth'))
     net.eval()
     testset = CUB200_loader(os.getcwd() + '/data/CUB_200_2011', split='test')
     test_loader = data.DataLoader(testset, batch_size=1,
@@ -38,7 +38,7 @@ def main():
         _, prediction = torch.max(score.data, 1)
         num_total += y.size(0)
         num_correct += torch.sum(prediction == y.data).item()
-    print('Test accuracy on CUB_200_2011 dataset is %.2f%'%(100 * num_correct / num_total))
+    print('Test accuracy on CUB_200_2011 dataset is %.2f%%'%(100 * num_correct / num_total))
 
 if __name__ =='__main__':
     main()
