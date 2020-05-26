@@ -24,5 +24,5 @@ torchvision==0.5.0
 3. 测试已训练好的model，从[这里]()下载三个state_dict，然后运行testCode.py
 ```bash
 (PyTorch) shipeiqu1998@torch:~/LT$ python testCode.py 
-Test accuracy is 85.95
+Test accuracy on CUB_200_2011 dataset is 85.95%
 ```
