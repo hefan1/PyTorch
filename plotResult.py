@@ -382,4 +382,15 @@ def main():
 
 
 if __name__ == '__main__':
-    main()
+    # main()
+    trainset = CUB200_loader(os.getcwd() + '/data/CUB_200_2011')
+    train_loader = data.DataLoader(trainset, batch_size=1,
+                                   shuffle=False, collate_fn=trainset.CUB_collate, num_workers=1)  # shuffle?
+    theta =torch.Tensor([[1,0,-0.5],
+                         [0,1,0]])
+    theta = theta.view(-1,2,3)
+    for X,y in train_loader:
+        visualize(X[0])
+        grid = F.affine_grid(theta, X.size())
+        X = F.grid_sample(X, grid)
+        visualize(X[0])
